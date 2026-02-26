@@ -288,32 +288,41 @@ You have access to the following tools to accomplish your tasks:
 
 
 def get_compression_prompt() -> str:
-    return """Provide a detailed continuation prompt for resuming this work. The new session will NOT have access to our conversation history.
+    return """Compress the conversation into MRL (Message Representation Language) particle format for context restoration. The new session will NOT have access to our conversation history.
 
-IMPORTANT: Structure your response EXACTLY as follows:
+MRL particles are compact, atomic units that encode state. Each particle has the form:
+  [KIND] content
+  [KIND:tag] content
 
-## ORIGINAL GOAL
-[State the user's original request/goal in one paragraph]
+Supported kinds:
+  [GOAL]        — The original user objective (one concise line)
+  [CTX]         — Important environment/codebase facts
+  [ACT:tool]    — A completed action with tool name as tag, outcome appended with →
+  [STATE]       — Current state of a file, component, or subsystem
+  [CONSTRAINT]  — Hard constraints that must be respected going forward
+  [REMAIN]      — A remaining task (one particle per task)
+  [NEXT]        — The single immediate next step to execute
 
-## COMPLETED ACTIONS (DO NOT REPEAT THESE)
-[List specific actions that are DONE and should NOT be repeated. Be specific with file paths, function names, changes made. Use bullet points.]
+Rules:
+- One particle per line.
+- Be as concise as possible: file paths, line numbers, symbol names preferred over prose (e.g., "app/main.py:42 process_request()" rather than "the process request function in the main application file").
+- Mark completed actions with [ACT:tool_name] and include a brief → outcome.
+- List REMAIN particles only for work not yet done.
+- End with exactly one [NEXT] particle.
+- Do NOT use any headings, markdown, or prose outside particles.
 
-## CURRENT STATE
-[Describe the current state of the codebase/project after the completed actions. What files exist, what has been modified, what is the current status.]
+Example output:
+[GOAL] Add rate-limiting middleware to the Flask API
+[CTX] Python 3.11, Flask 3.0, project root: /app
+[ACT:read_file] app/middleware.py → no existing rate limiter found
+[ACT:write_file] app/middleware.py → created RateLimiter class
+[STATE] app/middleware.py has RateLimiter(max_req=100, window=60)
+[CONSTRAINT] Do not modify app/auth.py
+[REMAIN] Register middleware in app/__init__.py
+[REMAIN] Add integration tests in tests/test_middleware.py
+[NEXT] Edit app/__init__.py to import and register RateLimiter
 
-## IN-PROGRESS WORK
-[What was being worked on when the context limit was hit? Any partial changes?]
-
-## REMAINING TASKS
-[What still needs to be done to complete the original goal? Be specific.]
-
-## NEXT STEP
-[What is the immediate next action to take? Be very specific - this is what the agent should do first.]
-
-## KEY CONTEXT
-[Any important decisions, constraints, user preferences, technical context or assumptions that must persist.]
-
-Be extremely specific with file paths and function names. The goal is to allow seamless continuation without redoing any completed work."""
+Now produce the MRL particle stream for the conversation above."""
 
 
 def create_loop_breaker_prompt(loop_description: str) -> str:
